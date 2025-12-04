@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}课程列表 - 课程评价平台{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>课程列表</h1>
+    
+    <div class="filters">
+        <form method="GET" action="{{ url_for('courses') }}" class="filter-form">
+            <div class="filter-group">
+                <input type="text" name="search" placeholder="搜索课程、教师或学校..." value="{{ search }}" class="filter-input">
+            </div>
+            <div class="filter-group">
+                <select name="school_id" class="filter-select">
+                    <option value="">所有学校</option>
+                    {% for school in schools %}
+                        <option value="{{ school.school_id }}" {% if school_id == school.school_id %}selected{% endif %}>
+                            {{ school.name }} {% if school.school_type == 'high_school' %}(高中){% else %}(大学){% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <select name="school_type" class="filter-select">
+                    <option value="">所有类型</option>
+                    <option value="university" {% if request.args.get('school_type') == 'university' %}selected{% endif %}>大学</option>
+                    <option value="high_school" {% if request.args.get('school_type') == 'high_school' %}selected{% endif %}>高中</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <select name="department" class="filter-select">
+                    <option value="">所有院系</option>
+                    {% for dept in departments %}
+                        <option value="{{ dept[0] }}" {% if department == dept[0] %}selected{% endif %}>
+                            {{ dept[0] }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <input type="number" name="min_score" placeholder="最低评分" min="1" max="5" step="0.1" class="filter-input">
+            </div>
+            <div class="filter-group">
+                <input type="text" name="tag" placeholder="标签" value="{{ tag }}" class="filter-input">
+            </div>
+            <button type="submit" class="btn btn-primary">筛选</button>
+            <a href="{{ url_for('courses') }}" class="btn btn-secondary">清除</a>
+        </form>
+    </div>
+
+    <div class="courses-grid">
+        {% for course in courses.items %}
+        <div class="course-card">
+            <div class="course-header">
+                <h3><a href="{{ url_for('course_detail', course_id=course.course_id) }}">{{ course.title }}</a></h3>
+                <div class="course-code">{{ course.code }}</div>
+            </div>
+            <div class="course-info">
+                <p>
+                    <i class="fas fa-university"></i> {{ course.school.name }}
+                    {% if course.school.school_type == 'high_school' %}
+                        <span class="school-type-badge school-type-high-school">高中</span>
+                    {% else %}
+                        <span class="school-type-badge school-type-university">大学</span>
+                    {% endif %}
+                </p>
+                <p><i class="fas fa-building"></i> {{ course.department }}</p>
+            </div>
+            <div class="course-rating">
+                <div class="star-rating" style="--rating: {{ course.avg_score|round(2) }};" aria-label="评分 {{ '%.1f'|format(course.avg_score) }} / 5"></div>
+                <span class="rating-text">{{ "%.1f"|format(course.avg_score) }} ({{ course.rating_count }} 评价)</span>
+            </div>
+            {% if course.description %}
+            <p class="course-description">{{ course.description[:100] }}{% if course.description|length > 100 %}...{% endif %}</p>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="pagination">
+        {% if courses.has_prev %}
+            <a href="{{ url_for('courses', page=courses.prev_num, search=search, school_id=school_id, department=department, tag=tag) }}" class="btn">上一页</a>
+        {% endif %}
+        <span>第 {{ courses.page }} 页，共 {{ courses.pages }} 页</span>
+        {% if courses.has_next %}
+            <a href="{{ url_for('courses', page=courses.next_num, search=search, school_id=school_id, department=department, tag=tag) }}" class="btn">下一页</a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

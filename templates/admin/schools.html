@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}学校管理 - 管理员{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1><i class="fas fa-university"></i> 学校管理</h1>
+        <a href="{{ url_for('create_school') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> 添加学校
+        </a>
+    </div>
+    
+    {% if schools %}
+    <div class="schools-table">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>学校名称</th>
+                    <th>类型</th>
+                    <th>国家</th>
+                    <th>城市</th>
+                    <th>课程数</th>
+                    <th>教师数</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for school in schools %}
+                <tr>
+                    <td><strong>{{ school.name }}</strong></td>
+                    <td>
+                        {% if school.school_type == 'high_school' %}
+                            <span class="school-type-badge school-type-high-school">
+                                <i class="fas fa-graduation-cap"></i> 高中
+                            </span>
+                        {% else %}
+                            <span class="school-type-badge school-type-university">
+                                <i class="fas fa-university"></i> 大学
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td>{{ school.country or '-' }}</td>
+                    <td>{{ school.city or '-' }}</td>
+                    <td>{{ school.course_count }}</td>
+                    <td>{{ school.instructor_count }}</td>
+                    <td class="action-buttons">
+                        <a href="{{ url_for('edit_school', school_id=school.school_id) }}" class="btn btn-sm btn-secondary">
+                            <i class="fas fa-edit"></i> 编辑
+                        </a>
+                        <form method="POST" action="{{ url_for('delete_school', school_id=school.school_id) }}" 
+                              style="display: inline;" 
+                              onsubmit="return confirm('确定要删除学校 \"{{ school.name }}\" 吗？此操作不可撤销！');">
+                            <button type="submit" class="btn btn-sm btn-danger">
+                                <i class="fas fa-trash"></i> 删除
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p><i class="fas fa-university"></i> 还没有添加任何学校。</p>
+        <a href="{{ url_for('create_school') }}" class="btn btn-primary">添加第一个学校</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+

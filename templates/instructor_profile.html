@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}{{ instructor.name }} - 教师主页{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="instructor-header">
+        <h1><i class="fas fa-chalkboard-teacher"></i> {{ instructor.name }}</h1>
+        {% if instructor.school %}
+        <p>
+            <i class="fas fa-university"></i> {{ instructor.school.name }}
+            {% if instructor.school.school_type == 'high_school' %}
+                <span class="school-type-badge school-type-high-school">高中</span>
+            {% else %}
+                <span class="school-type-badge school-type-university">大学</span>
+            {% endif %}
+        </p>
+        {% endif %}
+        {% if instructor.profile %}
+        <div class="instructor-profile">
+            <p>{{ instructor.profile }}</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="instructor-stats">
+        <div class="stat-card">
+            <div class="stat-label">平均评分</div>
+            <div class="stat-value">
+                <div class="star-rating large" style="--rating: {{ avg_score|round(2) }};" aria-label="平均评分 {{ '%.1f'|format(avg_score) }} / 5"></div>
+                <span>{{ "%.1f"|format(avg_score) }}/5.0</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">评价数量</div>
+            <div class="stat-value">{{ rating_count }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">授课课程数</div>
+            <div class="stat-value">{{ courses|length }}</div>
+        </div>
+    </div>
+
+    <div class="instructor-courses">
+        <h2>授课课程</h2>
+        <div class="courses-grid">
+            {% for course in courses %}
+            <div class="course-card">
+                <div class="course-header">
+                    <h3><a href="{{ url_for('course_detail', course_id=course.course_id) }}">{{ course.title }}</a></h3>
+                    <div class="course-code">{{ course.code }}</div>
+                </div>
+                <div class="course-info">
+                    <p>
+                        <i class="fas fa-university"></i> {{ course.school.name }}
+                        {% if course.school.school_type == 'high_school' %}
+                            <span class="school-type-badge school-type-high-school">高中</span>
+                        {% else %}
+                            <span class="school-type-badge school-type-university">大学</span>
+                        {% endif %}
+                    </p>
+                    <p><i class="fas fa-building"></i> {{ course.department }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+

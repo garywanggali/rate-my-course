@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}待审核课程 - 管理员{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1><i class="fas fa-clipboard-check"></i> 待审核课程</h1>
+    
+    {% if courses %}
+    <div class="admin-courses-list">
+        {% for course in courses %}
+        <div class="course-card admin-course-card">
+            <div class="course-header">
+                <h3>{{ course.title }}</h3>
+                <div class="course-code">{{ course.code }}</div>
+            </div>
+            <div class="course-info">
+                <p><i class="fas fa-university"></i> {{ course.school.name }}</p>
+                <p><i class="fas fa-building"></i> {{ course.department }}</p>
+                {% if course.description %}
+                <p class="course-description">{{ course.description }}</p>
+                {% endif %}
+            </div>
+            <div class="course-meta">
+                <p><strong>提交者:</strong> 
+                    {% if course.creator %}
+                        {{ course.creator.username }}
+                    {% else %}
+                        未知用户
+                    {% endif %}
+                </p>
+                <p><strong>提交时间:</strong> {{ course.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+            </div>
+            <div class="admin-actions">
+                <form method="POST" action="{{ url_for('approve_course', course_id=course.course_id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-primary" onclick="return confirm('确定要审核通过这个课程吗？')">
+                        <i class="fas fa-check"></i> 通过
+                    </button>
+                </form>
+                <form method="POST" action="{{ url_for('reject_course', course_id=course.course_id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-danger" onclick="return confirm('确定要拒绝这个课程吗？')">
+                        <i class="fas fa-times"></i> 拒绝
+                    </button>
+                </form>
+                <a href="{{ url_for('course_detail', course_id=course.course_id) }}" class="btn btn-secondary">
+                    <i class="fas fa-eye"></i> 查看详情
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p><i class="fas fa-check-circle"></i> 目前没有待审核的课程。</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+

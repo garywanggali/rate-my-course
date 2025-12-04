@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}我的课程 - 课程评价平台{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1><i class="fas fa-book"></i> 我提交的课程</h1>
+    
+    {% if courses %}
+    <div class="courses-grid">
+        {% for course in courses %}
+        <div class="course-card">
+            <div class="course-header">
+                <h3>
+                    {% if course.status == 'approved' %}
+                        <a href="{{ url_for('course_detail', course_id=course.course_id) }}">{{ course.title }}</a>
+                    {% else %}
+                        {{ course.title }}
+                    {% endif %}
+                </h3>
+                <div class="course-code">{{ course.code }}</div>
+            </div>
+            <div class="course-info">
+                <p>
+                    <i class="fas fa-university"></i> {{ course.school.name }}
+                    {% if course.school.school_type == 'high_school' %}
+                        <span class="school-type-badge school-type-high-school">高中</span>
+                    {% else %}
+                        <span class="school-type-badge school-type-university">大学</span>
+                    {% endif %}
+                </p>
+                <p><i class="fas fa-building"></i> {{ course.department }}</p>
+            </div>
+            <div class="course-status">
+                {% if course.status == 'pending' %}
+                    <span class="status-badge status-pending">
+                        <i class="fas fa-clock"></i> 待审核
+                    </span>
+                {% elif course.status == 'approved' %}
+                    <span class="status-badge status-approved">
+                        <i class="fas fa-check-circle"></i> 已通过
+                    </span>
+                {% elif course.status == 'rejected' %}
+                    <span class="status-badge status-rejected">
+                        <i class="fas fa-times-circle"></i> 已拒绝
+                    </span>
+                {% endif %}
+            </div>
+            <div class="course-meta">
+                <small>提交时间: {{ course.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>您还没有提交任何课程。</p>
+        <a href="{{ url_for('create_course') }}" class="btn btn-primary">创建第一个课程</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+

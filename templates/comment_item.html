@@ -1,0 +1,39 @@
+{% with current_comment=comment %}
+<div class="comment-item">
+    <div class="comment-header">
+        <span class="comment-user">
+            <i class="fas fa-user"></i> 
+            <a href="{{ url_for('user_profile', user_id=current_comment.user_id) }}">{{ current_comment.user.username }}</a>
+        </span>
+        <span class="comment-date">{{ current_comment.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+    </div>
+    <div class="comment-text">{{ current_comment.text }}</div>
+    {% if current_user.is_authenticated %}
+    <div class="comment-actions">
+        <button class="btn-link toggle-reply-form" data-comment-id="{{ current_comment.comment_id }}" data-rating-id="{{ current_comment.rating_id }}">
+            <i class="fas fa-reply"></i> 回复
+        </button>
+        <button class="btn-link toggle-report-form" data-entity-type="comment" data-entity-id="{{ current_comment.comment_id }}">
+            <i class="fas fa-flag"></i> 举报
+        </button>
+    </div>
+    {% endif %}
+    
+    <div class="replies">
+        {% for reply in current_comment.replies %}
+            {% with comment=reply %}
+                {% include 'comment_item.html' %}
+            {% endwith %}
+        {% endfor %}
+    </div>
+
+    <div class="reply-form" id="reply-form-{{ current_comment.comment_id }}" style="display: none;">
+        <form method="POST" action="{{ url_for('add_comment', rating_id=current_comment.rating_id) }}">
+            <input type="hidden" name="parent_comment_id" value="{{ current_comment.comment_id }}">
+            <textarea name="text" rows="2" placeholder="写下你的回复..." required></textarea>
+            <button type="submit" class="btn btn-sm">提交</button>
+        </form>
+    </div>
+</div>
+{% endwith %}
+

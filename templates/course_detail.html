@@ -1,0 +1,387 @@
+{% extends "base.html" %}
+
+{% block title %}{{ course.title }} - 课程评价平台{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="course-detail-header">
+        <div class="course-title-section">
+            <h1>{{ course.title }}</h1>
+            <div class="course-meta">
+                <span class="course-code">{{ course.code }}</span>
+                <span>
+                    <i class="fas fa-university"></i> {{ course.school.name }}
+                    {% if course.school.school_type == 'high_school' %}
+                        <span class="school-type-badge school-type-high-school">高中</span>
+                    {% else %}
+                        <span class="school-type-badge school-type-university">大学</span>
+                    {% endif %}
+                </span>
+                <span><i class="fas fa-building"></i> {{ course.department }}</span>
+            </div>
+        </div>
+        <div class="course-actions">
+            {% if current_user.is_authenticated %}
+                <button id="favorite-btn" class="btn {% if is_favorite %}btn-favorite{% else %}btn-secondary{% endif %}" 
+                        data-course-id="{{ course.course_id }}">
+                    <i class="fas fa-heart"></i> {% if is_favorite %}已收藏{% else %}收藏{% endif %}
+                </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="course-stats">
+        <div class="stat-card">
+            <div class="stat-label">总体评分</div>
+            <div class="stat-value">
+                <div class="star-rating large" style="--rating: {{ avg_overall|round(2) }};" aria-label="总体评分 {{ '%.1f'|format(avg_overall) }} / 5"></div>
+                <span>{{ "%.1f"|format(avg_overall) }}/5.0</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">难度</div>
+            <div class="stat-value">{{ "%.1f"|format(avg_difficulty) }}/5.0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">实用性</div>
+            <div class="stat-value">{{ "%.1f"|format(avg_usefulness) }}/5.0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">作业量</div>
+            <div class="stat-value">{{ "%.1f"|format(avg_workload) }}/5.0</div>
+        </div>
+    </div>
+
+    {% if instructors %}
+    <div class="instructors-section">
+        <h3>授课教师</h3>
+        <div class="instructors-list">
+            {% for instructor in instructors %}
+            <a href="{{ url_for('instructor_profile', instructor_id=instructor.instructor_id) }}" class="instructor-link">
+                <i class="fas fa-chalkboard-teacher"></i> {{ instructor.name }}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if course_tags %}
+    <div class="tags-section">
+        <h3>标签</h3>
+        <div class="tags-list">
+            {% for tag in course_tags %}
+            <span class="tag">{{ tag.name }}</span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if course.description %}
+    <div class="course-description-section">
+        <h3>课程描述</h3>
+        <p>{{ course.description }}</p>
+    </div>
+    {% endif %}
+
+    {% if current_user.is_authenticated %}
+    <div class="rate-course-section">
+        <h3>评价这门课程</h3>
+        <form method="POST" action="{{ url_for('rate_course', course_id=course.course_id) }}" class="rating-form">
+            <div class="rating-inputs">
+                <div class="rating-input-group">
+                    <label>总体评分 (1-5)</label>
+                    <select name="overall_score" required>
+                        <option value="">选择评分</option>
+                        {% for i in range(1, 6) %}
+                            <option value="{{ i }}">{{ i }} 星</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="rating-input-group">
+                    <label>难度 (1-5)</label>
+                    <select name="difficulty" required>
+                        <option value="">选择难度</option>
+                        {% for i in range(1, 6) %}
+                            <option value="{{ i }}">{{ i }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="rating-input-group">
+                    <label>实用性 (1-5)</label>
+                    <select name="usefulness" required>
+                        <option value="">选择实用性</option>
+                        {% for i in range(1, 6) %}
+                            <option value="{{ i }}">{{ i }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="rating-input-group">
+                    <label>作业量 (1-5)</label>
+                    <select name="workload" required>
+                        <option value="">选择作业量</option>
+                        {% for i in range(1, 6) %}
+                            <option value="{{ i }}">{{ i }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="comment_text">评论</label>
+                <textarea id="comment_text" name="comment_text" rows="5" placeholder="分享你的课程体验..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="anonymous_flag"> 匿名发布
+                </label>
+            </div>
+            <div class="form-group tag-form-group">
+                <label>标签</label>
+                <p class="tag-helper-text">拖动现有标签到右侧区域，或输入新的标签后按回车</p>
+                <div class="tag-selector">
+                    <div class="available-tags">
+                        <h4>可用标签</h4>
+                        <div class="tag-list" id="available-tags">
+                            {% for tag in available_tags %}
+                                <span class="tag-chip draggable-tag" draggable="true" data-tag-name="{{ tag.name }}">{{ tag.name }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="selected-tags" id="selected-tags" data-placeholder="将标签拖动到这里">
+                        <h4>已选择</h4>
+                        <div class="tag-dropzone" id="tag-dropzone"></div>
+                    </div>
+                </div>
+                <input type="text" id="new-tag-input" class="tag-input" placeholder="输入新的标签后按回车">
+                <div id="selected-tags-inputs"></div>
+            </div>
+            <button type="submit" class="btn btn-primary">提交评价</button>
+        </form>
+    </div>
+    {% endif %}
+
+    <div class="ratings-section">
+        <h3>评价列表 ({{ ratings|length }})</h3>
+        {% for rating in ratings %}
+        <div class="rating-item detailed">
+            <div class="rating-header">
+                <div class="rating-user">
+                    {% if rating.anonymous_flag %}
+                        <i class="fas fa-user-secret"></i> 匿名用户
+                    {% else %}
+                        <i class="fas fa-user"></i> 
+                        <a href="{{ url_for('user_profile', user_id=rating.user_id) }}">{{ rating.user.username }}</a>
+                    {% endif %}
+                </div>
+                <div class="rating-date">{{ rating.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+            </div>
+            <div class="rating-scores">
+                <span>总体: {{ rating.overall_score }}/5</span>
+                <span>难度: {{ rating.difficulty }}/5</span>
+                <span>实用性: {{ rating.usefulness }}/5</span>
+                <span>作业量: {{ rating.workload }}/5</span>
+            </div>
+            {% if rating.comment_text %}
+            <div class="rating-comment">{{ rating.comment_text }}</div>
+            {% endif %}
+            <div class="rating-actions">
+                {% if current_user.is_authenticated %}
+                    <form method="POST" action="{{ url_for('add_reaction', rating_id=rating.rating_id) }}" class="inline-form">
+                        <input type="hidden" name="reaction_type" value="helpful">
+                        <button type="submit" class="btn-link">
+                            <i class="fas fa-thumbs-up"></i> 有帮助
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('add_reaction', rating_id=rating.rating_id) }}" class="inline-form">
+                        <input type="hidden" name="reaction_type" value="not_helpful">
+                        <button type="submit" class="btn-link">
+                            <i class="fas fa-thumbs-down"></i> 无帮助
+                        </button>
+                    </form>
+                    <button class="btn-link toggle-comment-form" data-rating-id="{{ rating.rating_id }}">
+                        <i class="fas fa-comment"></i> 评论
+                    </button>
+                    <button class="btn-link toggle-report-form" data-entity-type="rating" data-entity-id="{{ rating.rating_id }}">
+                        <i class="fas fa-flag"></i> 举报
+                    </button>
+                {% endif %}
+            </div>
+            
+            <div class="comments-section" id="comments-{{ rating.rating_id }}">
+                {% for comment in rating.comments %}
+                    {% if not comment.parent_comment_id %}
+                        {% with comment=comment %}
+                            {% include 'comment_item.html' %}
+                        {% endwith %}
+                    {% endif %}
+                {% endfor %}
+            </div>
+
+            <div class="comment-form" id="comment-form-{{ rating.rating_id }}" style="display: none;">
+                <form method="POST" action="{{ url_for('add_comment', rating_id=rating.rating_id) }}">
+                    <input type="hidden" name="parent_comment_id" value="">
+                    <textarea name="text" rows="3" placeholder="写下你的评论..." required></textarea>
+                    <button type="submit" class="btn btn-sm">提交</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div id="report-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h3>举报</h3>
+        <form method="POST" action="{{ url_for('report') }}" id="report-form">
+            <input type="hidden" name="entity_type" id="report-entity-type">
+            <input type="hidden" name="entity_id" id="report-entity-id">
+            <div class="form-group">
+                <label for="reason">举报原因</label>
+                <textarea id="reason" name="reason" rows="4" required></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">提交举报</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Favorite toggle
+    const favoriteBtn = document.getElementById('favorite-btn');
+    if (favoriteBtn) {
+        favoriteBtn.addEventListener('click', function() {
+            const courseId = this.dataset.courseId;
+            fetch('{{ url_for("toggle_favorite", course_id=course.course_id) }}', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.action === 'added') {
+                    this.classList.add('btn-favorite');
+                    this.innerHTML = '<i class="fas fa-heart"></i> 已收藏';
+                } else {
+                    this.classList.remove('btn-favorite');
+                    this.innerHTML = '<i class="fas fa-heart"></i> 收藏';
+                }
+            });
+        });
+    }
+
+    // Comment form toggle
+    document.querySelectorAll('.toggle-comment-form').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const ratingId = this.dataset.ratingId;
+            const form = document.getElementById('comment-form-' + ratingId);
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        });
+    });
+
+    // Report modal
+    const reportModal = document.getElementById('report-modal');
+    document.querySelectorAll('.toggle-report-form').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.getElementById('report-entity-type').value = this.dataset.entityType;
+            document.getElementById('report-entity-id').value = this.dataset.entityId;
+            reportModal.style.display = 'block';
+        });
+    });
+
+    document.querySelector('.close-modal').addEventListener('click', function() {
+        reportModal.style.display = 'none';
+    });
+
+    // Tag drag & drop
+    const tagDropzone = document.getElementById('tag-dropzone');
+    const availableTags = document.querySelectorAll('.draggable-tag');
+    const selectedTagsInputs = document.getElementById('selected-tags-inputs');
+    const selectedTagsContainer = document.getElementById('selected-tags');
+    const newTagInput = document.getElementById('new-tag-input');
+    const selectedTagNames = new Set();
+
+    function updateDropzonePlaceholder() {
+        if (selectedTagNames.size === 0) {
+            tagDropzone.setAttribute('data-empty', 'true');
+        } else {
+            tagDropzone.removeAttribute('data-empty');
+        }
+    }
+
+    function createSelectedTag(name) {
+        if (selectedTagNames.has(name)) return;
+        selectedTagNames.add(name);
+
+        const tagChip = document.createElement('span');
+        tagChip.className = 'tag-chip selected';
+        tagChip.textContent = name;
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'remove-tag';
+        removeBtn.innerHTML = '&times;';
+        removeBtn.addEventListener('click', () => {
+            selectedTagNames.delete(name);
+            tagChip.remove();
+            const input = selectedTagsInputs.querySelector(`input[data-tag-name="${CSS.escape(name)}"]`);
+            if (input) input.remove();
+            updateDropzonePlaceholder();
+        });
+
+        tagChip.appendChild(removeBtn);
+        tagDropzone.appendChild(tagChip);
+
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'tags';
+        input.value = name;
+        input.dataset.tagName = name;
+        selectedTagsInputs.appendChild(input);
+
+        updateDropzonePlaceholder();
+    }
+
+    availableTags.forEach(tag => {
+        tag.addEventListener('dragstart', (event) => {
+            event.dataTransfer.setData('text/plain', tag.dataset.tagName);
+        });
+        tag.addEventListener('click', () => {
+            createSelectedTag(tag.dataset.tagName);
+        });
+    });
+
+    tagDropzone.addEventListener('dragover', (event) => {
+        event.preventDefault();
+        tagDropzone.classList.add('dragover');
+    });
+
+    tagDropzone.addEventListener('dragleave', () => {
+        tagDropzone.classList.remove('dragover');
+    });
+
+    tagDropzone.addEventListener('drop', (event) => {
+        event.preventDefault();
+        tagDropzone.classList.remove('dragover');
+        const tagName = event.dataTransfer.getData('text/plain');
+        if (tagName) {
+            createSelectedTag(tagName);
+        }
+    });
+
+    newTagInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            const value = newTagInput.value.trim();
+            if (value) {
+                createSelectedTag(value);
+                newTagInput.value = '';
+            }
+        }
+    });
+
+    updateDropzonePlaceholder();
+});
+</script>
+{% endblock %}
+
