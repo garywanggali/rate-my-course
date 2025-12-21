@@ -7,7 +7,7 @@
     <h1><i class="fas fa-trophy"></i> 课程排行榜</h1>
     
     <div class="filters">
-        <form method="GET" action="{{ url_for('rankings') }}" class="filter-form">
+        <form method="GET" action="{% url 'rankings' %}" class="filter-form">
             <div class="filter-group">
                 <select name="school_id" class="filter-select">
                     <option value="">所有学校</option>
@@ -19,17 +19,15 @@
                 </select>
             </div>
             <div class="filter-group">
-                <select name="department" class="filter-select">
-                    <option value="">所有院系</option>
-                    {% for dept in departments %}
-                        <option value="{{ dept[0] }}" {% if department == dept[0] %}selected{% endif %}>
-                            {{ dept[0] }}
-                        </option>
+                <select name="category_id" class="filter-select">
+                    <option value="">所有类别</option>
+                    {% for cat in categories %}
+                        <option value="{{ cat.category_id }}" {% if category_id == cat.category_id %}selected{% endif %}>{{ cat.name }}</option>
                     {% endfor %}
                 </select>
             </div>
             <button type="submit" class="btn btn-primary">筛选</button>
-            <a href="{{ url_for('rankings') }}" class="btn btn-secondary">清除</a>
+            <a href="{% url 'rankings' %}" class="btn btn-secondary">清除</a>
         </form>
     </div>
 
@@ -38,22 +36,22 @@
         <div class="ranking-item">
             <div class="ranking-number">{{ loop.index }}</div>
             <div class="ranking-content">
-                <h3><a href="{{ url_for('course_detail', course_id=course.course_id) }}">{{ course.title }}</a></h3>
+                <h3><a href="{% url 'course_detail' course_id=course.course_id %}">{{ course.title }}</a></h3>
                 <div class="ranking-meta">
                     <span class="course-code">{{ course.code }}</span>
                     <span>
                         <i class="fas fa-university"></i> {{ course.school.name }}
-                        {% if course.school.school_type == 'high_school' %}
+                        {% if course.school.school_type == 'highschool' %}
                             <span class="school-type-badge school-type-high-school">高中</span>
                         {% else %}
                             <span class="school-type-badge school-type-university">大学</span>
                         {% endif %}
                     </span>
-                    <span><i class="fas fa-building"></i> {{ course.department }}</span>
+                    <span><i class="fas fa-layer-group"></i> {{ course.category.name }}</span>
                 </div>
                 <div class="ranking-rating">
-                    <div class="star-rating" style="--rating: {{ avg_score|round(2) }};" aria-label="评分 {{ '%.1f'|format(avg_score) }} / 5"></div>
-                    <span class="rating-text">{{ "%.1f"|format(avg_score) }}/5.0</span>
+                    <div class="star-rating" style="--rating: {{ avg_score|floatformat:1 }};" aria-label="评分 {{ avg_score|floatformat:1 }} / 5"></div>
+                    <span class="rating-text">{{ avg_score|floatformat:1 }}/5.0</span>
                     <span class="rating-count">({{ rating_count }} 评价)</span>
                 </div>
             </div>
@@ -62,4 +60,3 @@
     </div>
 </div>
 {% endblock %}
-

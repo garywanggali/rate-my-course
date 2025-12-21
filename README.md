@@ -1,6 +1,6 @@
 # 课程评价平台
 
-一个基于 Flask 和 SQLite 的课程评价平台，允许学生评价和讨论课程。
+一个基于 Django 和 SQLite 的课程评价平台，允许学生评价和讨论课程。
 
 ## 功能特性
 
@@ -22,9 +22,9 @@
 
 ## 技术栈
 
-- **后端**: Flask 3.0.0
-- **数据库**: SQLite (通过 Flask-SQLAlchemy)
-- **认证**: Flask-Login
+- **后端**: Django
+- **数据库**: SQLite (Django ORM)
+- **认证**: Django Auth
 - **前端**: HTML, CSS, JavaScript (原生)
 
 ## 安装与运行
@@ -35,37 +35,23 @@
 pip install -r requirements.txt
 ```
 
-### 2. 初始化数据库
+### 2. 迁移数据库
 
 ```bash
-python init_db.py
+python manage.py migrate
 ```
-
-这将创建数据库并填充示例数据。
 
 ### 3. 运行应用
 
 ```bash
-python app.py
+python manage.py runserver 8000
 ```
 
-应用将在 `http://localhost:5000` 启动。
+应用将在 `http://localhost:8000` 启动。
 
 ## 测试账号
 
-初始化脚本会创建以下测试账号：
-
-- **管理员**: 
-  - 用户名: `admin`
-  - 密码: `admin123`
-
-- **学生1**: 
-  - 用户名: `student1`
-  - 密码: `password123`
-
-- **学生2**: 
-  - 用户名: `student2`
-  - 密码: `password123`
+可使用 Django Admin 创建测试账号，或在注册页自行注册。
 
 ## 数据库结构
 
@@ -86,9 +72,16 @@ python app.py
 
 ```
 rate_my_course/
-├── app.py                 # Flask 主应用
-├── models.py              # 数据库模型
-├── init_db.py            # 数据库初始化脚本
+├── manage.py             # Django 管理入口
+├── rate_my_course/       # Django 项目
+│   ├── settings.py
+│   ├── urls.py
+│   ├── wsgi.py
+│   └── asgi.py
+├── core/                 # 应用
+│   ├── models.py
+│   ├── views.py
+│   └── urls.py
 ├── requirements.txt      # Python 依赖
 ├── templates/            # HTML 模板
 │   ├── base.html
@@ -125,24 +118,23 @@ rate_my_course/
 
 ### 添加新功能
 
-1. 在 `models.py` 中添加新的数据库模型（如需要）
-2. 在 `app.py` 中添加新的路由和视图函数
+1. 在 `core/models.py` 中添加新的数据库模型
+2. 在 `core/views.py` 与 `core/urls.py` 中添加新的视图与路由
 3. 在 `templates/` 中创建或修改 HTML 模板
 4. 在 `static/css/style.css` 中添加样式（如需要）
 5. 在 `static/js/main.js` 中添加 JavaScript 功能（如需要）
 
 ### 数据库迁移
 
-当前使用 SQLite 数据库，文件为 `rate_my_course.db`。如需迁移到其他数据库，修改 `app.py` 中的 `SQLALCHEMY_DATABASE_URI` 配置。
+当前使用 SQLite 数据库，文件为 `rate_my_course.db`。如需迁移到其他数据库，修改 `rate_my_course/settings.py` 中的数据库配置。
 
 ## 注意事项
 
 - 生产环境请修改 `SECRET_KEY`
-- 建议使用更安全的密码哈希算法
+- 建议配置 `ALLOWED_HOSTS`
 - 可以添加更多验证和错误处理
-- 考虑添加管理员后台管理功能
+- 使用 Django Admin 进行基础管理
 
 ## 许可证
 
 MIT License
-

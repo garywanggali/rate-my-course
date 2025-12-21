@@ -152,8 +152,15 @@ body {
     margin: 0 auto;
 }
 
+.search-box form {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 10px;
+}
+
 .search-input {
-    width: 100%;
+    width: auto;
     padding: 12px 20px;
     font-size: 1rem;
     border: none;
@@ -1065,4 +1072,3 @@ body {
         width: 100%;
     }
 }
-
