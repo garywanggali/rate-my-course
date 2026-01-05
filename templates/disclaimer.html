@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}免责声明{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <h2><i class="fas fa-exclamation-triangle"></i> 使用免责声明</h2>
+        <p>为维护良好的交流环境，请您在发布、评论与互动时遵守以下约定：</p>
+        <ul style="margin: 15px 0 20px 20px; line-height: 1.8;">
+            <li>对自己发布的内容负责，确保真实、客观、尊重他人。</li>
+            <li>不得发布违法违规、侵犯隐私、侮辱诽谤、歧视或不当言论。</li>
+            <li>不得泄露考试题目、他人个人信息或受保护资料。</li>
+            <li>平台可能记录与保存必要日志用于安全与合规；违规内容可能被移除，账号可能受限。</li>
+        </ul>
+        <form method="POST" action="{% url 'disclaimer' %}">
+            {% csrf_token %}
+            <input type="hidden" name="accept" value="yes">
+            <div class="form-actions" style="justify-content: center;">
+                <a href="{% url 'logout' %}" class="btn btn-secondary">不同意，退出</a>
+                <button type="submit" class="btn btn-primary">我已阅读并接受</button>
+            </div>
+        </form>
+    </div>
+    </div>
+{% endblock %}

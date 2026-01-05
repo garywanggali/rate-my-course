@@ -4,89 +4,143 @@
 
 {% block content %}
 <div class="container">
-    <h1>课程列表</h1>
-    
-    <div class="filters">
-        <form method="GET" action="{{ url_for('courses') }}" class="filter-form">
-            <div class="filter-group">
-                <input type="text" name="search" placeholder="搜索课程、教师或学校..." value="{{ search }}" class="filter-input">
-            </div>
-            <div class="filter-group">
-                <select name="school_id" class="filter-select">
-                    <option value="">所有学校</option>
-                    {% for school in schools %}
-                        <option value="{{ school.school_id }}" {% if school_id == school.school_id %}selected{% endif %}>
-                            {{ school.name }} {% if school.school_type == 'high_school' %}(高中){% else %}(大学){% endif %}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="filter-group">
-                <select name="school_type" class="filter-select">
-                    <option value="">所有类型</option>
-                    <option value="university" {% if request.args.get('school_type') == 'university' %}selected{% endif %}>大学</option>
-                    <option value="high_school" {% if request.args.get('school_type') == 'high_school' %}selected{% endif %}>高中</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <select name="department" class="filter-select">
-                    <option value="">所有院系</option>
-                    {% for dept in departments %}
-                        <option value="{{ dept[0] }}" {% if department == dept[0] %}selected{% endif %}>
-                            {{ dept[0] }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="filter-group">
-                <input type="number" name="min_score" placeholder="最低评分" min="1" max="5" step="0.1" class="filter-input">
-            </div>
-            <div class="filter-group">
-                <input type="text" name="tag" placeholder="标签" value="{{ tag }}" class="filter-input">
-            </div>
-            <button type="submit" class="btn btn-primary">筛选</button>
-            <a href="{{ url_for('courses') }}" class="btn btn-secondary">清除</a>
-        </form>
+    <div class="page-header">
+        <h1>课程列表</h1>
+        <details id="search-panel" class="filter-details">
+            <summary class="btn btn-secondary btn-sm">搜索</summary>
+            <form method="GET" action="{% url 'courses' %}" class="filter-form" style="margin-top:10px;">
+                <div class="filter-group">
+                    <input type="text" name="search" placeholder="搜索课程、教师或学校..." value="{{ search }}" class="filter-input">
+                </div>
+                <div class="filter-group">
+                    <select name="school_id" class="filter-select">
+                        <option value="">所有学校</option>
+                        {% for school in schools %}
+                            <option value="{{ school.school_id }}" {% if school_id == school.school_id %}selected{% endif %}>{{ school.name }} {% if school.school_type == 'highschool' %}(高中){% else %}(大学){% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <select name="school_type" class="filter-select">
+                        <option value="">所有类型</option>
+                        <option value="university" {% if school_type == 'university' %}selected{% endif %}>大学</option>
+                        <option value="highschool" {% if school_type == 'highschool' %}selected{% endif %}>高中</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <select name="category_id" class="filter-select">
+                        <option value="">所有类别</option>
+                        {% for cat in categories %}
+                            <option value="{{ cat.category_id }}" {% if category_id == cat.category_id %}selected{% endif %}>{{ cat.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <input type="number" name="min_score" placeholder="最低评分" min="1" max="5" step="0.1" class="filter-input">
+                </div>
+                <div class="filter-group">
+                    <input type="text" name="tag" placeholder="标签" value="{{ tag }}" class="filter-input">
+                </div>
+                <button type="submit" class="btn btn-primary">筛选</button>
+                <a href="{% url 'courses' %}" class="btn btn-secondary">清除</a>
+            </form>
+        </details>
     </div>
 
     <div class="courses-grid">
-        {% for course in courses.items %}
+        {% for course in courses %}
         <div class="course-card">
             <div class="course-header">
-                <h3><a href="{{ url_for('course_detail', course_id=course.course_id) }}">{{ course.title }}</a></h3>
+                <h3><a href="{% url 'course_detail' course_id=course.course_id %}">{{ course.title }}</a></h3>
                 <div class="course-code">{{ course.code }}</div>
             </div>
             <div class="course-info">
                 <p>
                     <i class="fas fa-university"></i> {{ course.school.name }}
-                    {% if course.school.school_type == 'high_school' %}
+                    {% if course.school.school_type == 'highschool' %}
                         <span class="school-type-badge school-type-high-school">高中</span>
                     {% else %}
                         <span class="school-type-badge school-type-university">大学</span>
                     {% endif %}
                 </p>
-                <p><i class="fas fa-building"></i> {{ course.department }}</p>
+                <p><i class="fas fa-layer-group"></i> {{ course.category.name }}</p>
+                {% if user.is_staff %}
+                <p><i class="fas fa-tag"></i> 状态: {{ course.status }}</p>
+                {% endif %}
             </div>
             <div class="course-rating">
-                <div class="star-rating" style="--rating: {{ course.avg_score|round(2) }};" aria-label="评分 {{ '%.1f'|format(course.avg_score) }} / 5"></div>
-                <span class="rating-text">{{ "%.1f"|format(course.avg_score) }} ({{ course.rating_count }} 评价)</span>
+                <div class="star-rating" style="--rating: {{ course.avg_score|floatformat:1 }};" aria-label="评分 {{ course.avg_score|floatformat:1 }} / 5"></div>
+                <span class="rating-text">{{ course.avg_score|floatformat:1 }} ({{ course.rating_count }} 评价)</span>
             </div>
             {% if course.description %}
-            <p class="course-description">{{ course.description[:100] }}{% if course.description|length > 100 %}...{% endif %}</p>
+            <p class="course-description">{{ course.description|slice:":100" }}{% if course.description|length > 100 %}...{% endif %}</p>
             {% endif %}
+            <div class="course-random-comment" data-course-id="{{ course.course_id }}">
+                <i class="fas fa-quote-left"></i> <span class="random-comment-text">加载中...</span>
+            </div>
         </div>
         {% endfor %}
     </div>
 
-    <div class="pagination">
-        {% if courses.has_prev %}
-            <a href="{{ url_for('courses', page=courses.prev_num, search=search, school_id=school_id, department=department, tag=tag) }}" class="btn">上一页</a>
-        {% endif %}
-        <span>第 {{ courses.page }} 页，共 {{ courses.pages }} 页</span>
-        {% if courses.has_next %}
-            <a href="{{ url_for('courses', page=courses.next_num, search=search, school_id=school_id, department=department, tag=tag) }}" class="btn">下一页</a>
-        {% endif %}
-    </div>
+    
 </div>
 {% endblock %}
 
+{% block scripts %}
+<script>
+function escapeHtml(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function initRandomComments(){
+  const blocks=document.querySelectorAll('.course-random-comment');
+  blocks.forEach(block=>{
+    const id=block.dataset.courseId;
+    const span = block.querySelector('.random-comment-text');
+    const url = `{% url 'random_course_comment' course_id=0 %}`.replace('0', id);
+    let lastKind = null;
+    let lastId = null;
+    async function fetchText(){
+      try{
+        let reqUrl = url;
+        if(lastKind && lastId){
+          reqUrl += `?exclude_kind=${encodeURIComponent(lastKind)}&exclude_id=${encodeURIComponent(lastId)}`;
+        }
+        const r = await fetch(reqUrl);
+        const d = await r.json();
+        if(d && d.text){
+          const text = escapeHtml(d.text);
+          lastKind = d.kind || null;
+          lastId = d.id || null;
+          return text.length>100? text.slice(0,100)+"…" : text;
+        }
+        lastKind = null;
+        lastId = null;
+        return '暂无评论';
+      }catch(e){
+        lastKind = null;
+        lastId = null;
+        return '加载失败';
+      }
+    }
+    async function cycle(){
+      span.classList.add('slide-out');
+      await new Promise(res=>setTimeout(res,300));
+      const display = await fetchText();
+      span.innerHTML = display;
+      span.classList.remove('slide-out');
+      span.classList.add('slide-in');
+      await new Promise(res=>setTimeout(res,300));
+      span.classList.remove('slide-in');
+      const dwell = Math.max(900, display.length * 300);
+      setTimeout(cycle, dwell);
+    }
+    cycle();
+  });
+}
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded', initRandomComments);
+}else{
+  initRandomComments();
+}
+</script>
+{% endblock %}

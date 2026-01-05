@@ -5,9 +5,8 @@
 echo "正在安装依赖..."
 pip3 install -r requirements.txt
 
-echo "正在初始化数据库..."
-python3 init_db.py
+echo "正在迁移数据库..."
+python3 manage.py migrate
 
-echo "启动应用..."
-python3 app.py
-
+echo "启动Django服务..."
+python3 manage.py runserver 8000

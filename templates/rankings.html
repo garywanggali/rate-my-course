@@ -4,62 +4,161 @@
 
 {% block content %}
 <div class="container">
-    <h1><i class="fas fa-trophy"></i> 课程排行榜</h1>
-    
+    <div class="rankings-header">
+        <h1><i class="fas fa-trophy"></i> 排行榜</h1>
+    </div>
+
     <div class="filters">
-        <form method="GET" action="{{ url_for('rankings') }}" class="filter-form">
+        <form method="GET" action="{% url 'rankings' %}" class="filter-form">
             <div class="filter-group">
                 <select name="school_id" class="filter-select">
                     <option value="">所有学校</option>
                     {% for school in schools %}
-                        <option value="{{ school.school_id }}" {% if school_id == school.school_id %}selected{% endif %}>
-                            {{ school.name }}
-                        </option>
+                        <option value="{{ school.school_id }}" {% if school_id == school.school_id %}selected{% endif %}>{{ school.name }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="filter-group">
-                <select name="department" class="filter-select">
-                    <option value="">所有院系</option>
-                    {% for dept in departments %}
-                        <option value="{{ dept[0] }}" {% if department == dept[0] %}selected{% endif %}>
-                            {{ dept[0] }}
-                        </option>
+                <select name="category_id" class="filter-select">
+                    <option value="">所有类别</option>
+                    {% for cat in categories %}
+                        <option value="{{ cat.category_id }}" {% if category_id == cat.category_id %}selected{% endif %}>{{ cat.name }}</option>
                     {% endfor %}
                 </select>
             </div>
             <button type="submit" class="btn btn-primary">筛选</button>
-            <a href="{{ url_for('rankings') }}" class="btn btn-secondary">清除</a>
+            <a href="{% url 'rankings' %}" class="btn btn-secondary">清除</a>
         </form>
     </div>
 
-    <div class="rankings-list">
-        {% for course, avg_score, rating_count in top_courses %}
-        <div class="ranking-item">
-            <div class="ranking-number">{{ loop.index }}</div>
-            <div class="ranking-content">
-                <h3><a href="{{ url_for('course_detail', course_id=course.course_id) }}">{{ course.title }}</a></h3>
-                <div class="ranking-meta">
-                    <span class="course-code">{{ course.code }}</span>
-                    <span>
-                        <i class="fas fa-university"></i> {{ course.school.name }}
-                        {% if course.school.school_type == 'high_school' %}
-                            <span class="school-type-badge school-type-high-school">高中</span>
-                        {% else %}
-                            <span class="school-type-badge school-type-university">大学</span>
-                        {% endif %}
-                    </span>
-                    <span><i class="fas fa-building"></i> {{ course.department }}</span>
-                </div>
-                <div class="ranking-rating">
-                    <div class="star-rating" style="--rating: {{ avg_score|round(2) }};" aria-label="评分 {{ '%.1f'|format(avg_score) }} / 5"></div>
-                    <span class="rating-text">{{ "%.1f"|format(avg_score) }}/5.0</span>
-                    <span class="rating-count">({{ rating_count }} 评价)</span>
-                </div>
-            </div>
+    <div class="rankings-grid">
+        <div class="ranking-card">
+            <h3><i class="fas fa-star"></i> 课程 · 综合评分前十</h3>
+            <ul class="ranking-list">
+                {% for item in top_overall %}
+                <li>
+                    <div class="ranking-left">
+                        <span class="rank-number">{{ forloop.counter }}</span>
+                        <a href="{% url 'course_detail' course_id=item.course.course_id %}">{{ item.course.title }}</a>
+                    </div>
+                    <div class="ranking-right">
+                        <span class="pill">{{ item.avg_overall|floatformat:1 }}/5</span>
+                        <span class="pill">{{ item.rating_count }} 评价</span>
+                    </div>
+                </li>
+                {% empty %}<li>暂无数据</li>{% endfor %}
+            </ul>
         </div>
-        {% endfor %}
+
+        <div class="ranking-card">
+            <h3><i class="fas fa-feather-alt"></i> 课程 · 难度最低前十</h3>
+            <ul class="ranking-list">
+                {% for item in top_easiest %}
+                <li>
+                    <div class="ranking-left">
+                        <span class="rank-number">{{ forloop.counter }}</span>
+                        <a href="{% url 'course_detail' course_id=item.course.course_id %}">{{ item.course.title }}</a>
+                    </div>
+                    <div class="ranking-right">
+                        <span class="pill">难度 {{ item.avg_difficulty|floatformat:1 }}/5</span>
+                        <span class="pill">{{ item.rating_count }} 评价</span>
+                    </div>
+                </li>
+                {% empty %}<li>暂无数据</li>{% endfor %}
+            </ul>
+        </div>
+
+        <div class="ranking-card">
+            <h3><i class="fas fa-tools"></i> 课程 · 实用性最高前十</h3>
+            <ul class="ranking-list">
+                {% for item in top_useful %}
+                <li>
+                    <div class="ranking-left">
+                        <span class="rank-number">{{ forloop.counter }}</span>
+                        <a href="{% url 'course_detail' course_id=item.course.course_id %}">{{ item.course.title }}</a>
+                    </div>
+                    <div class="ranking-right">
+                        <span class="pill">实用性 {{ item.avg_usefulness|floatformat:1 }}/5</span>
+                        <span class="pill">{{ item.rating_count }} 评价</span>
+                    </div>
+                </li>
+                {% empty %}<li>暂无数据</li>{% endfor %}
+            </ul>
+        </div>
+
+        <div class="ranking-card">
+            <h3><i class="fas fa-leaf"></i> 课程 · 作业量最少前十</h3>
+            <ul class="ranking-list">
+                {% for item in top_low_workload %}
+                <li>
+                    <div class="ranking-left">
+                        <span class="rank-number">{{ forloop.counter }}</span>
+                        <a href="{% url 'course_detail' course_id=item.course.course_id %}">{{ item.course.title }}</a>
+                    </div>
+                    <div class="ranking-right">
+                        <span class="pill">作业量 {{ item.avg_workload|floatformat:1 }}/5</span>
+                        <span class="pill">{{ item.rating_count }} 评价</span>
+                    </div>
+                </li>
+                {% empty %}<li>暂无数据</li>{% endfor %}
+            </ul>
+        </div>
+
+        <div class="ranking-card">
+            <h3><i class="fas fa-chalkboard-teacher"></i> 老师 · 最受欢迎前十</h3>
+            <ul class="ranking-list">
+                {% for item in top_instructors %}
+                <li>
+                    <div class="ranking-left">
+                        <span class="rank-number">{{ forloop.counter }}</span>
+                        <span>{{ item.instructor.name }}</span>
+                    </div>
+                    <div class="ranking-right">
+                        <span class="pill">{{ item.avg_overall|floatformat:1 }}/5</span>
+                        <span class="pill">{{ item.rating_count }} 评价</span>
+                    </div>
+                </li>
+                {% empty %}<li>暂无数据</li>{% endfor %}
+            </ul>
+        </div>
+
+        <div class="ranking-card">
+            <h3><i class="fas fa-user-check"></i> 用户 · 最帮助他人</h3>
+            <ul class="ranking-list">
+                {% for item in top_helpful_users %}
+                <li>
+                    <div class="ranking-left">
+                        <span class="rank-number">{{ forloop.counter }}</span>
+                        <span>{{ item.user.username }}</span>
+                    </div>
+                    <div class="ranking-right">
+                        <span class="pill">有帮助 {{ item.helpful }}</span>
+                        <span class="pill">无帮助 {{ item.not_helpful }}</span>
+                        <span class="pill">净值 {{ item.net }}</span>
+                    </div>
+                </li>
+                {% empty %}<li>暂无数据</li>{% endfor %}
+            </ul>
+        </div>
+
+        <div class="ranking-card">
+            <h3><i class="fas fa-user-plus"></i> 用户 · 净帮助值前十</h3>
+            <ul class="ranking-list">
+                {% for item in top_net_helpful_users %}
+                <li>
+                    <div class="ranking-left">
+                        <span class="rank-number">{{ forloop.counter }}</span>
+                        <span>{{ item.user.username }}</span>
+                    </div>
+                    <div class="ranking-right">
+                        <span class="pill">有帮助 {{ item.helpful }}</span>
+                        <span class="pill">无帮助 {{ item.not_helpful }}</span>
+                        <span class="pill">净值 {{ item.net }}</span>
+                    </div>
+                </li>
+                {% empty %}<li>暂无数据</li>{% endfor %}
+            </ul>
+        </div>
     </div>
 </div>
 {% endblock %}
-
