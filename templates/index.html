@@ -42,38 +42,6 @@
         </div>
     </section>
 
-    <section class="recent-ratings">
-        <h2><i class="fas fa-clock"></i> 最新评价</h2>
-        <div class="ratings-list">
-            {% for rating in recent_ratings %}
-            <div class="rating-item">
-                <div class="rating-header">
-                    <div class="rating-user">
-                        {% if rating.anonymous_flag %}
-                            <i class="fas fa-user-secret"></i> 匿名用户
-                        {% else %}
-                            <i class="fas fa-user"></i> {{ rating.user.username }}
-                        {% endif %}
-                    </div>
-                    <div class="rating-course">
-                        <a href="{% url 'course_detail' course_id=rating.course_id %}">
-                            {{ rating.course.title }}
-                        </a>
-                    </div>
-                    <div class="rating-date">{{ rating.created_at|date:"Y-m-d" }}</div>
-                </div>
-                <div class="rating-scores">
-                    <span>总体: {{ rating.overall_score }}/5</span>
-                    <span>难度: {{ rating.difficulty }}/5</span>
-                    <span>实用性: {{ rating.usefulness }}/5</span>
-                    <span>作业量: {{ rating.workload }}/5</span>
-                </div>
-                {% if rating.comment_text %}
-                <div class="rating-comment">{{ rating.comment_text|slice:":200" }}{% if rating.comment_text|length > 200 %}...{% endif %}</div>
-                {% endif %}
-            </div>
-            {% endfor %}
-        </div>
-    </section>
+    
 </div>
 {% endblock %}

@@ -19,6 +19,7 @@
             <div class="nav-menu">
                 <a href="{% url 'index' %}">首页</a>
                 <a href="{% url 'courses' %}">课程</a>
+                <a href="{% url 'rankings' %}">排行榜</a>
                 {% if user.is_authenticated %}
                     <span class="nav-user"><i class="fas fa-user"></i> {{ user.username }}</span>
                     <a href="{% url 'logout' %}">退出</a>

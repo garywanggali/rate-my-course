@@ -9,6 +9,9 @@
             <h2><i class="fas fa-user-plus"></i> 注册</h2>
             <form method="POST" action="{% url 'register' %}">
                 {% csrf_token %}
+                {% if request.GET.next %}
+                <input type="hidden" name="next" value="{{ request.GET.next }}">
+                {% endif %}
                 <div class="form-group">
                     <label for="username">用户名</label>
                     <input type="text" id="username" name="username" required>

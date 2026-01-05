@@ -26,6 +26,10 @@
                         data-course-id="{{ course.course_id }}">
                     <i class="fas fa-heart"></i> {% if is_favorite %}已收藏{% else %}收藏{% endif %}
                 </button>
+            {% else %}
+                <a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-secondary">
+                    <i class="fas fa-heart"></i> 收藏
+                </a>
             {% endif %}
         </div>
     </div>
@@ -56,9 +60,12 @@
     <div class="instructors-section">
         <h3>授课教师</h3>
         <div class="instructors-list">
-            {% for instructor in instructors %}
+            {% for stat in instructor_stats %}
             <a href="#" class="instructor-link">
-                <i class="fas fa-chalkboard-teacher"></i> {{ instructor.name }}
+                <i class="fas fa-chalkboard-teacher"></i> {{ stat.instructor.name }}
+                {% if stat.rating_count %}
+                    · 平均 {{ stat.avg_overall|floatformat:1 }}/5 · {{ stat.rating_count }} 评价
+                {% endif %}
             </a>
             {% endfor %}
         </div>
@@ -83,17 +90,16 @@
     </div>
     {% endif %}
 
-    {% if user.is_authenticated %}
     <div class="rate-course-section">
         <h3>评价这门课程</h3>
-        <form method="POST" action="{% url 'rate_course' course_id=course.course_id %}" class="rating-form">
+        {% if user.is_authenticated %}
+        <form method="POST" action="{% url 'rate_course' course_id=course.course_id %}" class="rating-form compact">
             {% csrf_token %}
             <div class="rating-inputs">
                 <div class="rating-input-group">
                     <label>总体评分 (1-5)</label>
                     <select name="overall_score" required>
                         <option value="">选择评分</option>
-                        {% for i in 1|make_list %}{% endfor %}
                         <option value="1">1 星</option>
                         <option value="2">2 星</option>
                         <option value="3">3 星</option>
@@ -134,22 +140,29 @@
                         <option value="5">5</option>
                     </select>
                 </div>
+                <div class="rating-input-group">
+                    <label>选择教师（可选）</label>
+                    <select name="instructor_id">
+                        <option value="">不指定教师</option>
+                        {% for ins in instructors %}
+                            <option value="{{ ins.instructor_id }}">{{ ins.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
             </div>
             <div class="form-group">
                 <label for="comment_text">评论</label>
-                <textarea id="comment_text" name="comment_text" rows="5" placeholder="分享你的课程体验..."></textarea>
+                <textarea id="comment_text" name="comment_text" rows="3" placeholder="分享你的课程体验..."></textarea>
             </div>
             <div class="form-group">
                 <label>
                     <input type="checkbox" name="anonymous_flag"> 匿名发布
                 </label>
             </div>
-            <div class="form-group tag-form-group">
-                <label>标签</label>
-                <p class="tag-helper-text">拖动现有标签到右侧区域，或输入新的标签后按回车</p>
+            <details class="form-group tag-form-group" id="tag-details">
+                <summary class="btn btn-sm">添加标签（可选）</summary>
                 <div class="tag-selector">
                     <div class="available-tags">
-                        <h4>可用标签</h4>
                         <div class="tag-list" id="available-tags">
                             {% for tag in available_tags %}
                                 <span class="tag-chip draggable-tag" draggable="true" data-tag-name="{{ tag.name }}">{{ tag.name }}</span>
@@ -157,17 +170,21 @@
                         </div>
                     </div>
                     <div class="selected-tags" id="selected-tags" data-placeholder="将标签拖动到这里">
-                        <h4>已选择</h4>
                         <div class="tag-dropzone" id="tag-dropzone"></div>
                     </div>
                 </div>
                 <input type="text" id="new-tag-input" class="tag-input" placeholder="输入新的标签后按回车">
                 <div id="selected-tags-inputs"></div>
-            </div>
+            </details>
             <button type="submit" class="btn btn-primary">提交评价</button>
         </form>
+        {% else %}
+        <div class="rating-form" style="text-align:center;">
+            <p class="tag-helper-text">登录后即可评价这门课程，并与同学分享你的体验。</p>
+            <a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-primary">登录后评价</a>
+        </div>
+        {% endif %}
     </div>
-    {% endif %}
 
     <div class="ratings-section">
         <h3>评价列表 ({{ ratings|length }})</h3>
@@ -215,6 +232,19 @@
                     <button class="btn-link toggle-report-form" data-entity-type="rating" data-entity-id="{{ rating.rating_id }}">
                         <i class="fas fa-flag"></i> 举报
                     </button>
+                {% else %}
+                    <a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}" class="btn-link">
+                        <i class="fas fa-thumbs-up"></i> 有帮助
+                    </a>
+                    <a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}" class="btn-link">
+                        <i class="fas fa-thumbs-down"></i> 无帮助
+                    </a>
+                    <a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}" class="btn-link">
+                        <i class="fas fa-comment"></i> 评论
+                    </a>
+                    <a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}" class="btn-link">
+                        <i class="fas fa-flag"></i> 举报
+                    </a>
                 {% endif %}
             </div>
             
@@ -261,7 +291,7 @@
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+function initCourseDetail() {
     // Favorite toggle
     const favoriteBtn = document.getElementById('favorite-btn');
     if (favoriteBtn) {
@@ -359,45 +389,57 @@ document.addEventListener('DOMContentLoaded', function() {
         updateDropzonePlaceholder();
     }
 
-    availableTags.forEach(tag => {
-        tag.addEventListener('dragstart', (event) => {
-            event.dataTransfer.setData('text/plain', tag.dataset.tagName);
+    if (availableTags && availableTags.length) {
+        availableTags.forEach(tag => {
+            tag.addEventListener('dragstart', (event) => {
+                event.dataTransfer.setData('text/plain', tag.dataset.tagName);
+            });
+            tag.addEventListener('click', () => {
+                createSelectedTag(tag.dataset.tagName);
+            });
         });
-        tag.addEventListener('click', () => {
-            createSelectedTag(tag.dataset.tagName);
-        });
-    });
+    }
 
-    tagDropzone.addEventListener('dragover', (event) => {
-        event.preventDefault();
-        tagDropzone.classList.add('dragover');
-    });
-
-    tagDropzone.addEventListener('dragleave', () => {
-        tagDropzone.classList.remove('dragover');
-    });
-
-    tagDropzone.addEventListener('drop', (event) => {
-        event.preventDefault();
-        tagDropzone.classList.remove('dragover');
-        const tagName = event.dataTransfer.getData('text/plain');
-        if (tagName) {
-            createSelectedTag(tagName);
-        }
-    });
-
-    newTagInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
+    if (tagDropzone) {
+        tagDropzone.addEventListener('dragover', (event) => {
             event.preventDefault();
-            const value = newTagInput.value.trim();
-            if (value) {
-                createSelectedTag(value);
-                newTagInput.value = '';
+            tagDropzone.classList.add('dragover');
+        });
+        tagDropzone.addEventListener('dragleave', () => {
+            tagDropzone.classList.remove('dragover');
+        });
+        tagDropzone.addEventListener('drop', (event) => {
+            event.preventDefault();
+            tagDropzone.classList.remove('dragover');
+            const tagName = event.dataTransfer.getData('text/plain');
+            if (tagName) {
+                createSelectedTag(tagName);
             }
-        }
-    });
+        });
+    }
 
-    updateDropzonePlaceholder();
-});
+    if (newTagInput) {
+        newTagInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const value = newTagInput.value.trim();
+                if (value) {
+                    createSelectedTag(value);
+                    newTagInput.value = '';
+                }
+            }
+        });
+    }
+
+    if (tagDropzone) {
+        updateDropzonePlaceholder();
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCourseDetail);
+} else {
+    initCourseDetail();
+}
 </script>
 {% endblock %}

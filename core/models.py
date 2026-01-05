@@ -90,6 +90,7 @@ class Rating(models.Model):
     rating_id = models.IntegerField(primary_key=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_column="user_id")
     course = models.ForeignKey(Course, on_delete=models.CASCADE, db_column="course_id", to_field="course_id")
+    instructor = models.ForeignKey('Instructor', on_delete=models.SET_NULL, null=True, db_column='instructor_id', to_field='instructor_id')
     overall_score = models.IntegerField()
     difficulty = models.IntegerField()
     usefulness = models.IntegerField()
@@ -174,4 +175,13 @@ class Favorite(models.Model):
 
     class Meta:
         db_table = "favorite"
+        managed = True
+
+
+class UserDisclaimer(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_column="user_id")
+    accepted_at = models.DateTimeField()
+
+    class Meta:
+        db_table = "user_disclaimer"
         managed = True

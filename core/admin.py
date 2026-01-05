@@ -46,7 +46,7 @@ class TagAdmin(admin.ModelAdmin):
 
 @admin.register(Rating)
 class RatingAdmin(admin.ModelAdmin):
-    list_display = ("rating_id", "course", "user", "overall_score", "difficulty", "usefulness", "workload", "created_at")
+    list_display = ("rating_id", "course", "instructor", "user", "overall_score", "difficulty", "usefulness", "workload", "created_at")
     list_filter = ("overall_score", "difficulty", "usefulness", "workload")
     search_fields = ("course__title", "user__username")
 

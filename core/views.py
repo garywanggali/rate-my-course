@@ -7,9 +7,11 @@ from .models import Course, Rating, School, Tag
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.http import JsonResponse
-from .models import Comment, Favorite, RatingReaction, CourseInstructor, Instructor, CourseTag, Report
+from django.urls import reverse
+from .models import Comment, Favorite, RatingReaction, CourseInstructor, Instructor, CourseTag, Report, UserDisclaimer
 
 from django.contrib.auth import get_user_model
+import random
 
 def index(request: HttpRequest):
     ratings_qs = Rating.objects.filter(course__status="approved")
@@ -21,8 +23,90 @@ def index(request: HttpRequest):
             top_courses.append((c, row["avg_score"] or 0, row["rating_count"]))
         except Course.DoesNotExist:
             pass
-    recent_ratings = ratings_qs.order_by("-created_at")[:5]
-    return render(request, "index.html", {"top_courses": top_courses, "recent_ratings": recent_ratings})
+    return render(request, "index.html", {"top_courses": top_courses})
+
+def rankings(request: HttpRequest):
+    school_id = request.GET.get("school_id")
+    category_id = request.GET.get("category_id")
+
+    # base course set
+    course_qs = Course.objects.filter(status="approved")
+    if school_id:
+        course_qs = course_qs.filter(school_id=school_id)
+    if category_id:
+        course_qs = course_qs.filter(category_id=category_id)
+
+    # course dimension rankings
+    course_stats = []
+    for c in course_qs:
+        rs = Rating.objects.filter(course=c)
+        if rs.exists():
+            course_stats.append({
+                "course": c,
+                "avg_overall": rs.aggregate(a=Avg("overall_score"))['a'] or 0,
+                "avg_difficulty": rs.aggregate(a=Avg("difficulty"))['a'] or 0,
+                "avg_usefulness": rs.aggregate(a=Avg("usefulness"))['a'] or 0,
+                "avg_workload": rs.aggregate(a=Avg("workload"))['a'] or 0,
+                "rating_count": rs.count(),
+            })
+
+    top_overall = sorted(course_stats, key=lambda x: (-(x["avg_overall"] or 0), -x["rating_count"]),)[:10]
+    top_easiest = sorted(course_stats, key=lambda x: (x["avg_difficulty"] or 0, -x["rating_count"]),)[:10]
+    top_useful = sorted(course_stats, key=lambda x: (-(x["avg_usefulness"] or 0), -x["rating_count"]),)[:10]
+    top_low_workload = sorted(course_stats, key=lambda x: (x["avg_workload"] or 0, -x["rating_count"]),)[:10]
+
+    # instructor popularity (avg overall and count)
+    instr_qs = Instructor.objects.filter(courseinstructor__course__in=course_qs).distinct()
+    instructor_stats = []
+    for ins in instr_qs:
+        rqs = Rating.objects.filter(instructor=ins, course__in=course_qs)
+        if rqs.exists():
+            instructor_stats.append({
+                "instructor": ins,
+                "avg_overall": rqs.aggregate(a=Avg("overall_score"))['a'] or 0,
+                "rating_count": rqs.count(),
+            })
+    top_instructors = sorted(instructor_stats, key=lambda x: (-(x["avg_overall"] or 0), -x["rating_count"]),)[:10]
+
+    # user helpfulness rankings based on reactions to their ratings
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    author_ids = list(Rating.objects.filter(course__in=course_qs).values_list("user_id", flat=True).distinct())
+    authors = User.objects.filter(id__in=author_ids)
+    user_stats = []
+    for u in authors:
+        helpful = RatingReaction.objects.filter(reaction_type="helpful", rating__user_id=u.id, rating__course__in=course_qs).count()
+        not_helpful = RatingReaction.objects.filter(reaction_type="not_helpful", rating__user_id=u.id, rating__course__in=course_qs).count()
+        user_stats.append({
+            "user": u,
+            "helpful": helpful,
+            "not_helpful": not_helpful,
+            "net": helpful - not_helpful,
+        })
+    top_helpful_users = sorted(user_stats, key=lambda x: (-(x["helpful"] or 0), -x["net"]),)[:10]
+    top_net_helpful_users = sorted(user_stats, key=lambda x: (-(x["net"] or 0), -x["helpful"]),)[:10]
+
+    schools = School.objects.order_by("name")
+    from .models import Category
+    categories = Category.objects.order_by("name")
+
+    return render(
+        request,
+        "rankings.html",
+        {
+            "schools": schools,
+            "categories": categories,
+            "school_id": int(school_id) if school_id else None,
+            "category_id": int(category_id) if category_id else None,
+            "top_overall": top_overall,
+            "top_easiest": top_easiest,
+            "top_useful": top_useful,
+            "top_low_workload": top_low_workload,
+            "top_instructors": top_instructors,
+            "top_helpful_users": top_helpful_users,
+            "top_net_helpful_users": top_net_helpful_users,
+        },
+    )
 
 def courses(request: HttpRequest):
     search = request.GET.get("search", "").strip()
@@ -84,6 +168,59 @@ def courses(request: HttpRequest):
         },
     )
 
+def random_course_comment(request: HttpRequest, course_id: int):
+    try:
+        Course.objects.get(pk=course_id)
+    except Course.DoesNotExist:
+        return JsonResponse({"text": None}, status=404)
+    exclude_kind = request.GET.get("exclude_kind")
+    exclude_id_raw = request.GET.get("exclude_id")
+    try:
+        exclude_id = int(exclude_id_raw) if exclude_id_raw is not None else None
+    except Exception:
+        exclude_id = None
+
+    ratings_qs = Rating.objects.filter(course_id=course_id).exclude(comment_text__isnull=True).exclude(comment_text__exact="")
+    comments_qs = Comment.objects.filter(rating__course_id=course_id).exclude(text__isnull=True).exclude(text__exact="")
+
+    if exclude_kind == "rating" and exclude_id:
+        ratings_qs = ratings_qs.exclude(rating_id=exclude_id)
+    if exclude_kind == "comment" and exclude_id:
+        comments_qs = comments_qs.exclude(comment_id=exclude_id)
+    count_r = ratings_qs.count()
+    count_c = comments_qs.count()
+    if count_r + count_c == 0:
+        return JsonResponse({"text": None})
+    pick = random.randint(1, count_r + count_c)
+    if pick <= count_r:
+        r = ratings_qs.order_by("?").first()
+        username = None
+        try:
+            username = ("匿名" if getattr(r, "anonymous_flag", False) else r.user.username)
+        except Exception:
+            username = None
+        return JsonResponse({
+            "text": r.comment_text,
+            "user": username,
+            "created_at": r.created_at.isoformat() if getattr(r, "created_at", None) else None,
+            "kind": "rating",
+            "id": r.rating_id,
+        })
+    else:
+        c = comments_qs.order_by("?").first()
+        username = None
+        try:
+            username = c.user.username
+        except Exception:
+            username = None
+        return JsonResponse({
+            "text": c.text,
+            "user": username,
+            "created_at": c.created_at.isoformat() if getattr(c, "created_at", None) else None,
+            "kind": "comment",
+            "id": c.comment_id,
+        })
+
 def course_detail(request: HttpRequest, course_id: int):
     try:
         course = Course.objects.get(pk=course_id)
@@ -105,13 +242,29 @@ def course_detail(request: HttpRequest, course_id: int):
     else:
         avg_overall = avg_difficulty = avg_usefulness = avg_workload = 0
 
-    instructors = Instructor.objects.filter(courseinstructor__course_id=course_id)
+    instructors = list(Instructor.objects.filter(courseinstructor__course_id=course_id))
     course_tags = Tag.objects.filter(coursetag__course_id=course_id)
     available_tags = Tag.objects.order_by("name")[:100]
 
     is_favorite = False
     if request.user.is_authenticated:
         is_favorite = Favorite.objects.filter(user_id=request.user.id, course_id=course_id).exists()
+
+    # per-instructor aggregates
+    instructor_stats = []
+    for ins in instructors:
+        rqs = Rating.objects.filter(course_id=course_id, instructor_id=ins.instructor_id)
+        if rqs.exists():
+            avg_ins = rqs.aggregate(a=Avg("overall_score"))['a'] or 0
+            cnt_ins = rqs.count()
+        else:
+            avg_ins = 0
+            cnt_ins = 0
+        instructor_stats.append({
+            'instructor': ins,
+            'avg_overall': avg_ins,
+            'rating_count': cnt_ins,
+        })
 
     return render(
         request,
@@ -124,6 +277,7 @@ def course_detail(request: HttpRequest, course_id: int):
             "avg_usefulness": avg_usefulness,
             "avg_workload": avg_workload,
             "instructors": instructors,
+            "instructor_stats": instructor_stats,
             "course_tags": course_tags,
             "available_tags": available_tags,
             "is_favorite": is_favorite,
@@ -146,8 +300,15 @@ def register(request: HttpRequest):
             messages.error(request, "邮箱已注册")
             return redirect("register")
         User.objects.create_user(username=username, email=email, password=password)
-        messages.success(request, "注册成功，请登录")
-        return redirect("login")
+        user = authenticate(request, username=username, password=password)
+        if user:
+            login(request, user)
+            next_url = request.POST.get("next") or request.GET.get("next") or "index"
+            if not UserDisclaimer.objects.filter(user_id=user.id).exists():
+                return redirect(f"{reverse('disclaimer')}?next={next_url}")
+            return redirect(next_url)
+        messages.success(request, "注册成功")
+        return redirect("index")
     return render(request, "register.html")
 
 def login_view(request: HttpRequest):
@@ -157,7 +318,10 @@ def login_view(request: HttpRequest):
         user = authenticate(request, username=username, password=password)
         if user:
             login(request, user)
-            next_url = request.GET.get("next")
+            next_url = request.POST.get("next") or request.GET.get("next")
+            if not UserDisclaimer.objects.filter(user_id=user.id).exists():
+                go = next_url or "index"
+                return redirect(f"{reverse('disclaimer')}?next={go}")
             return redirect(next_url or "index")
         messages.error(request, "用户名或密码错误")
     return render(request, "login.html")
@@ -165,6 +329,18 @@ def login_view(request: HttpRequest):
 def logout_view(request: HttpRequest):
     logout(request)
     return redirect("index")
+
+@login_required
+def disclaimer(request: HttpRequest):
+    next_url = request.GET.get("next") or "index"
+    if UserDisclaimer.objects.filter(user_id=request.user.id).exists():
+        return redirect(next_url)
+    if request.method == "POST":
+        if request.POST.get("accept") == "yes":
+            UserDisclaimer.objects.create(user_id=request.user.id, accepted_at=timezone.now())
+            return redirect(next_url)
+        messages.error(request, "请阅读并接受免责声明以继续使用平台")
+    return render(request, "disclaimer.html", {"next": next_url})
 @login_required
 def rate_course(request: HttpRequest, course_id: int):
     try:
@@ -178,9 +354,20 @@ def rate_course(request: HttpRequest, course_id: int):
         messages.info(request, "您已评价过该课程，可修改评价。")
         return redirect("course_detail", course_id=course_id)
 
+    # optional instructor selection, only allow instructors assigned to this course
+    sel_ins_id = request.POST.get("instructor_id")
+    if sel_ins_id:
+        try:
+            ci_exists = CourseInstructor.objects.filter(course_id=course_id, instructor_id=int(sel_ins_id)).exists()
+            if not ci_exists:
+                sel_ins_id = None
+        except Exception:
+            sel_ins_id = None
+
     r = Rating(
         user_id=request.user.id,
         course_id=course_id,
+        instructor_id=int(sel_ins_id) if sel_ins_id else None,
         overall_score=int(request.POST.get("overall_score", 0) or 0),
         difficulty=int(request.POST.get("difficulty", 0) or 0),
         usefulness=int(request.POST.get("usefulness", 0) or 0),
