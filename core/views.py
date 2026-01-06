@@ -417,13 +417,30 @@ def add_comment(request: HttpRequest, rating_id: int):
         return redirect("index")
 
     parent_id = request.POST.get("parent_comment_id")
-    Comment.objects.create(
-        rating_id=rating_id,
-        user_id=request.user.id,
-        parent_comment_id=int(parent_id) if parent_id else None,
-        text=request.POST.get("text", ""),
-        created_at=timezone.now(),
-    )
+    if parent_id:
+        try:
+            parent = Comment.objects.get(pk=int(parent_id))
+        except Comment.DoesNotExist:
+            messages.error(request, "父评论不存在")
+            return redirect("course_detail", course_id=rating.course_id)
+        if parent.parent_comment_id:
+            messages.error(request, "不支持对评论的评论继续回复")
+            return redirect("course_detail", course_id=rating.course_id)
+        Comment.objects.create(
+            rating_id=rating_id,
+            user_id=request.user.id,
+            parent_comment_id=parent.comment_id,
+            text=request.POST.get("text", ""),
+            created_at=timezone.now(),
+        )
+    else:
+        Comment.objects.create(
+            rating_id=rating_id,
+            user_id=request.user.id,
+            parent_comment_id=None,
+            text=request.POST.get("text", ""),
+            created_at=timezone.now(),
+        )
     return redirect("course_detail", course_id=rating.course_id)
 
 @login_required

@@ -9,9 +9,11 @@
     <div class="comment-text">{{ comment.text }}</div>
     {% if user.is_authenticated %}
     <div class="comment-actions">
+        {% if not comment.parent_comment_id %}
         <button class="btn-link toggle-reply-form" data-comment-id="{{ comment.comment_id }}" data-rating-id="{{ comment.rating_id }}">
             <i class="fas fa-reply"></i> 回复
         </button>
+        {% endif %}
         <button class="btn-link toggle-report-form" data-entity-type="comment" data-entity-id="{{ comment.comment_id }}">
             <i class="fas fa-flag"></i> 举报
         </button>
@@ -26,6 +28,7 @@
         {% endfor %}
     </div>
 
+    {% if not comment.parent_comment_id %}
     <div class="reply-form" id="reply-form-{{ comment.comment_id }}" style="display: none;">
         <form method="POST" action="{% url 'add_comment' rating_id=comment.rating_id %}">
             {% csrf_token %}
@@ -34,4 +37,5 @@
             <button type="submit" class="btn btn-sm">提交</button>
         </form>
     </div>
+    {% endif %}
 </div>

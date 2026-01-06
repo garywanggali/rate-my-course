@@ -542,6 +542,9 @@ body {
     margin-left: 30px;
     margin-top: 10px;
 }
+.replies .toggle-reply-form {
+    display: none;
+}
 
 .reply-form {
     margin-top: 10px;
