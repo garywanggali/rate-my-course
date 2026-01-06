@@ -234,6 +234,25 @@ def course_detail(request: HttpRequest, course_id: int):
             return redirect("courses")
 
     ratings = Rating.objects.filter(course_id=course_id).order_by("-created_at")
+    rating_ids = [r.rating_id for r in ratings]
+    comment_qs = Comment.objects.filter(rating_id__in=rating_ids).order_by("created_at")
+    nodes = {}
+    roots_by_rating = {}
+    for c in comment_qs:
+        setattr(c, "children", [])
+        nodes[c.comment_id] = c
+        roots_by_rating.setdefault(c.rating_id, [])
+    for c in comment_qs:
+        if c.parent_comment_id:
+            parent = nodes.get(c.parent_comment_id)
+            if parent is not None:
+                parent.children.append(c)
+            else:
+                roots_by_rating.setdefault(c.rating_id, []).append(c)
+        else:
+            roots_by_rating.setdefault(c.rating_id, []).append(c)
+    for r in ratings:
+        setattr(r, "comments", roots_by_rating.get(r.rating_id, []))
     if ratings.exists():
         avg_overall = ratings.aggregate(a=Avg("overall_score"))["a"] or 0
         avg_difficulty = ratings.aggregate(a=Avg("difficulty"))["a"] or 0

@@ -434,6 +434,17 @@ function initCourseDetail() {
     if (tagDropzone) {
         updateDropzonePlaceholder();
     }
+
+    // Reply form toggle
+    document.querySelectorAll('.toggle-reply-form').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const cid = this.dataset.commentId;
+            const form = document.getElementById('reply-form-' + cid);
+            if (form) {
+                form.style.display = form.style.display === 'none' ? 'block' : 'none';
+            }
+        });
+    });
 }
 
 if (document.readyState === 'loading') {
